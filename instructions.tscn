@@ -1,0 +1,113 @@
+[gd_scene load_steps=3 format=3 uid="uid://cinstructions001"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
+bg_color = Color(0.8, 0.4, 0.2, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="GDScript" id="GDScript_Instructions"]
+script/source = "extends Control
+
+func _ready():
+	pass
+
+func _on_back_button_pressed():
+	get_tree().change_scene_to_file(\"res://main_menu.tscn\")
+"
+
+[node name="Instructions" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = SubResource("GDScript_Instructions")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.15, 0.15, 0.25, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -350.0
+offset_top = -300.0
+offset_right = 350.0
+offset_bottom = 300.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 0, 1)
+theme_override_font_sizes/font_size = 32
+text = "Οδηγίες Παιχνιδιού"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="InstructionsPanel" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/InstructionsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 15
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 15
+theme_override_constants/margin_bottom = 15
+
+[node name="InstructionsText" type="Label" parent="VBoxContainer/InstructionsPanel/MarginContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "🎯 ΣΤΟΧΟΣ:
+Συλλέξτε όσο το δυνατόν περισσότερα αστέρια
+και αποφύγετε τα κόκκινα εμπόδια!
+
+🎮 ΕΛΕΓΧΟΙ:
+• Πλήκτρα ← → (Αριστερά/Δεξιά) για κίνηση
+• Πλήκτρο SPACE για άλμα
+• Πλήκτρο ESC για παύση
+
+⭐ ΒΑΘΜΟΛΟΓΙΑ:
+• Κάθε αστέρι: +10 πόντοι
+• Κάθε εμπόδιο: -5 πόντοι
+
+💡 ΣΥΜΒΟΥΛΕΣ:
+• Προσέξτε τα αντικείμενα που πέφτουν!
+• Κινηθείτε γρήγορα για να συλλέξετε αστέρια
+• Αποφύγετε τα κόκκινα εμπόδια
+
+Καλή επιτυχία!"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Spacer2" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="VBoxContainer"]
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_1")
+text = "Επιστροφή"
+
+[connection signal="pressed" from="VBoxContainer/BackButton" to="." method="_on_back_button_pressed"]

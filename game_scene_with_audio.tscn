@@ -1,0 +1,267 @@
+[gd_scene load_steps=9 format=3 uid="uid://cgamescene002"]
+
+[ext_resource type="AudioStream" uid="uid://b4yh36hmssgyv" path="res://sounds/background_music2.ogg" id="1_wy7fr"]
+[ext_resource type="AudioStream" uid="uid://c34tcul66djrn" path="res://sounds/collect.ogg" id="2_h5grc"]
+[ext_resource type="AudioStream" uid="uid://dxcxpw78a1sdd" path="res://sounds/jump.ogg" id="3_hrmmb"]
+[ext_resource type="AudioStream" uid="uid://e8x5egsm2b6v" path="res://sounds/hit.ogg" id="4_6wsjh"]
+
+[sub_resource type="GDScript" id="GDScript_GameScene"]
+script/source = "extends Node2D
+
+var score = 0
+var spawn_timer = 0.0
+var spawn_interval = 1.5
+
+# Audio players
+var sound_collect
+var sound_jump
+var sound_hit
+var music_player
+
+func _ready():
+	randomize()
+	update_score_display()
+	setup_audio()
+
+func setup_audio():
+	sound_collect = $AudioPlayers/CollectSound
+	sound_jump = $AudioPlayers/JumpSound
+	sound_hit = $AudioPlayers/HitSound
+	music_player = $AudioPlayers/BackgroundMusic
+
+	if music_player and music_player.stream:
+		# Ενεργοποίηση loop για OGG files
+		if music_player.stream is AudioStreamOggVorbis:
+			music_player.stream.loop = true
+		music_player.play()
+
+func _process(delta):
+	spawn_timer += delta
+
+	if spawn_timer >= spawn_interval:
+		spawn_timer = 0.0
+		spawn_object()
+
+	if Input.is_action_just_pressed(\"ui_cancel\"):
+		get_tree().change_scene_to_file(\"res://main_menu.tscn\")
+
+func spawn_object():
+	var spawn_x = randf_range(50, 1100)
+	if randf() < 0.7:
+		spawn_collectible(spawn_x)
+	else:
+		spawn_obstacle(spawn_x)
+
+func create_star_polygon():
+	# Δημιουργία 5-pointed star
+	var points = []
+	var outer_radius = 15.0
+	var inner_radius = 6.0
+
+	for i in range(10):
+		var angle = -PI / 2 + (i * PI / 5)
+		var radius = outer_radius if i % 2 == 0 else inner_radius
+		points.append(Vector2(cos(angle) * radius, sin(angle) * radius))
+
+	return points
+
+func spawn_collectible(x_pos):
+	var collectible = Area2D.new()
+	collectible.position = Vector2(x_pos, -50)
+
+	# Αστέρι με Polygon2D
+	var star = Polygon2D.new()
+	star.polygon = create_star_polygon()
+	star.color = Color.YELLOW
+	collectible.add_child(star)
+
+	var collision = CollisionShape2D.new()
+	collision.shape = CircleShape2D.new()
+	collision.shape.radius = 15.0
+	collectible.add_child(collision)
+
+	var script = GDScript.new()
+	script.source_code = \"\"\"
+extends Area2D
+var fall_speed = 150.0
+func _ready():
+	fall_speed = randf_range(100, 250)
+func _process(delta):
+	position.y += fall_speed * delta
+	rotation += 1.0 * delta
+	if position.y > 700:
+		queue_free()
+\"\"\"
+	script.reload()
+	collectible.set_script(script)
+
+	collectible.body_entered.connect(func(body):
+		if body.name == \"Player\":
+			add_score(10)
+			play_sound(\"collect\")
+			collectible.queue_free()
+	)
+
+	add_child(collectible)
+
+func spawn_obstacle(x_pos):
+	var obstacle = Area2D.new()
+	obstacle.position = Vector2(x_pos, -50)
+
+	# Κόκκινο τετράγωνο
+	var rect = Polygon2D.new()
+	rect.polygon = PackedVector2Array([
+		Vector2(-15, -15),
+		Vector2(15, -15),
+		Vector2(15, 15),
+		Vector2(-15, 15)
+	])
+	rect.color = Color.RED
+	obstacle.add_child(rect)
+
+	var collision = CollisionShape2D.new()
+	collision.shape = RectangleShape2D.new()
+	collision.shape.size = Vector2(30, 30)
+	obstacle.add_child(collision)
+
+	var script = GDScript.new()
+	script.source_code = \"\"\"
+extends Area2D
+var fall_speed = 200.0
+var rotation_speed = 2.0
+func _ready():
+	fall_speed = randf_range(150, 300)
+	rotation_speed = randf_range(1.5, 3.5)
+func _process(delta):
+	position.y += fall_speed * delta
+	rotation += rotation_speed * delta
+	if position.y > 700:
+		queue_free()
+\"\"\"
+	script.reload()
+	obstacle.set_script(script)
+
+	obstacle.body_entered.connect(func(body):
+		if body.name == \"Player\":
+			add_score(-5)
+			play_sound(\"hit\")
+			obstacle.queue_free()
+	)
+
+	add_child(obstacle)
+
+func add_score(points):
+	score += points
+	update_score_display()
+
+func update_score_display():
+	$UI/ScoreLabel.text = \"Βαθμολογία: \" + str(score)
+
+func play_sound(sound_type):
+	match sound_type:
+		\"collect\":
+			if sound_collect and sound_collect.stream:
+				sound_collect.play()
+		\"jump\":
+			if sound_jump and sound_jump.stream:
+				sound_jump.play()
+		\"hit\":
+			if sound_hit and sound_hit.stream:
+				sound_hit.play()
+"
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_Ground"]
+size = Vector2(1152, 48)
+
+[sub_resource type="GDScript" id="GDScript_Player"]
+script/source = "extends CharacterBody2D
+
+const SPEED = 500.0
+const JUMP_VELOCITY = -400.0
+var gravity = ProjectSettings.get_setting(\"physics/2d/default_gravity\")
+
+func _physics_process(delta):
+	if not is_on_floor():
+		velocity.y += gravity * delta
+
+	if Input.is_action_just_pressed(\"ui_accept\") and is_on_floor():
+		velocity.y = JUMP_VELOCITY
+		get_parent().play_sound(\"jump\")
+
+	var direction = Input.get_axis(\"ui_left\", \"ui_right\")
+	if direction:
+		velocity.x = direction * SPEED
+	else:
+		velocity.x = move_toward(velocity.x, 0, SPEED)
+
+	move_and_slide()
+	position.x = clamp(position.x, 20, 1132)
+"
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_Player"]
+radius = 20.0
+
+[node name="GameScene" type="Node2D"]
+script = SubResource("GDScript_GameScene")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 1152.0
+offset_bottom = 648.0
+color = Color(0.2, 0.3, 0.5, 1)
+
+[node name="Ground" type="StaticBody2D" parent="."]
+position = Vector2(0, 600)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
+position = Vector2(576, 24)
+shape = SubResource("RectangleShape2D_Ground")
+
+[node name="ColorRect" type="ColorRect" parent="Ground"]
+offset_right = 1152.0
+offset_bottom = 48.0
+color = Color(0.4, 0.3, 0.2, 1)
+
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(576, 550)
+script = SubResource("GDScript_Player")
+
+[node name="Circle" type="Polygon2D" parent="Player"]
+color = Color(0.2, 0.8, 0.2, 1)
+polygon = PackedVector2Array(-20, 0, -19.6157, -6.18034, -18.4776, -11.7557, -16.6294, -16.6294, -14.1421, -20.6457, -11.1114, -23.5114, -7.65367, -25.3171, -3.90181, -26.0902, 0, -26, 3.90181, -26.0902, 7.65367, -25.3171, 11.1114, -23.5114, 14.1421, -20.6457, 16.6294, -16.6294, 18.4776, -11.7557, 19.6157, -6.18034, 20, 0, 19.6157, 6.18034, 18.4776, 11.7557, 16.6294, 16.6294, 14.1421, 20.6457, 11.1114, 23.5114, 7.65367, 25.3171, 3.90181, 26.0902, 0, 26, -3.90181, 26.0902, -7.65367, 25.3171, -11.1114, 23.5114, -14.1421, 20.6457, -16.6294, 16.6294, -18.4776, 11.7557, -19.6157, 6.18034)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+shape = SubResource("CircleShape2D_Player")
+
+[node name="AudioPlayers" type="Node" parent="."]
+
+[node name="BackgroundMusic" type="AudioStreamPlayer" parent="AudioPlayers"]
+stream = ExtResource("1_wy7fr")
+
+[node name="CollectSound" type="AudioStreamPlayer" parent="AudioPlayers"]
+stream = ExtResource("2_h5grc")
+
+[node name="JumpSound" type="AudioStreamPlayer" parent="AudioPlayers"]
+stream = ExtResource("3_hrmmb")
+
+[node name="HitSound" type="AudioStreamPlayer" parent="AudioPlayers"]
+stream = ExtResource("4_6wsjh")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="ScoreLabel" type="Label" parent="UI"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 300.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 32
+text = "Βαθμολογία: 0"
+
+[node name="InstructionLabel" type="Label" parent="UI"]
+offset_left = 20.0
+offset_top = 70.0
+offset_right = 500.0
+offset_bottom = 110.0
+theme_override_colors/font_color = Color(1, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 18
+text = "← → για κίνηση | SPACE για άλμα | ESC για μενού"
